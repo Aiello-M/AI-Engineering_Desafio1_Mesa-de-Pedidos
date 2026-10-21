@@ -17,8 +17,8 @@
 
 ## 📚 Datos del Proyecto
 
-- **Institución:** ICARO - UNC - FCEFyN
-- **Programa:** Diplomatura Universitaria en IA Engineering
+- **Institución:** ICARO · UNC · FCEFyN
+- **Programa:** Diplomatura Universitaria de Formación Continua en IA Engineering
 - **Trabajo:** Desafío 1 - Mesa de Pedidos
 - **Docente:** Lucas Romano Miller
 - **Estudiante:** Mariana Aiello
@@ -34,10 +34,7 @@
 Este repositorio corresponde al **Desafío 1** de la **Diplomatura Universitaria de Formación Continua en IA
 Engineering** (ICARO · UNC · FCEFyN).
 
-La empresa del caso es Ferretería Industrial Andina, una distribuidora mayorista de insumos industriales de
-Córdoba. Los clientes mandan sus mensajes por WhatsApp y por mail, y una persona los pasa a mano:
-pregunta por un flete, arma un pedido, revisa si el cliente tiene crédito. La mayoría de los mensajes son
-rutina, pero algunos necesitan que alguien con autoridad decida.
+Ferretería Industrial Andina es una distribuidora mayorista de insumos industriales de Córdoba. Sus clientes envían consultas y pedidos por WhatsApp o correo electrónico, que actualmente se procesan de forma manual. La mayoría son casos de rutina, pero algunos pedidos necesitan la autorización de Gerencia Comercial, por ejemplo cuando superan el límite de crédito o falta stock.
 
 El proyecto implementa un **grafo de LangGraph** que procesa esos mensajes. Para cada uno:
 
@@ -56,7 +53,7 @@ montos, los descuentos y el crédito, y aplica las reglas de la empresa.
 
 ## 🎯 Objetivo
 
-- Procesar los 20 mensajes de la bandeja y que cada uno termine en el nodo correcto.
+- Procesar los 20 mensajes de la bandeja y comprobar que cada uno siga la ruta esperada.
 - Responder las consultas con la información de los PDF, citando documento y página.
 - Calcular los pedidos con las reglas comerciales, sin dejar las cuentas en manos del LLM.
 - Frenar los pedidos que necesitan aprobación, guardarlos y poder retomarlos después, aunque el programa
@@ -74,7 +71,7 @@ montos, los descuentos y el crédito, y aplica las reglas de la empresa.
 |  1  | **RAG híbrido** (BM25 + denso, con citas) | `retriever.py`: FAISS + BM25 unidos con `EnsembleRetriever`. Las respuestas citan `[documento, p. N]`      |
 |  2  | **Dos tools reales**                      | `tools.py`: `consultar_producto` (catálogo y stock) y `verificar_credito` (clientes)                       |
 |  3  | **Grafo con estado**                      | `estado.py`: `TypedDict` con un reducer para el log (cada nodo suma su línea)                              |
-|  4  | **Bifurcación**                           | `grafo.py`: 3 routers declarados con `add_conditional_edges`, ningún `if` escondido en un nodo             |
+|  4  | **Bifurcación**                           | `grafo.py`: 3 routers declarados mediante `add_conditional_edges`. Las bifurcaciones se definen en el grafo, no dentro de los nodos. |
 |  5  | **Checkpointer**                          | `grafo.py`: `SqliteSaver` sobre `artefactos/checkpoints.sqlite`, un `thread_id` por mensaje                |
 |  6  | **Human-in-the-loop**                     | `nodos.py`: `aprobacion_humana` llama a `interrupt()` con el payload y se retoma con `Command(resume=...)` |
 |  7  | **Structured outputs**                    | `esquemas.py`: modelos de Pydantic para clasificar y extraer el pedido, sin `json.loads`                   |
@@ -112,13 +109,15 @@ montos, los descuentos y el crédito, y aplica las reglas de la empresa.
 
 Los 20 mensajes del golden set se reparten de la siguiente manera:
 
-| Termina en           | Mensajes          | Cantidad |
+| Ruta esperada        | Mensajes          | Cantidad |
 | :------------------- | :---------------- | :------: |
 | `responder_consulta` | MSG-001 a MSG-008 |    8     |
 | `confirmar_pedido`   | MSG-009 a MSG-012 |    4     |
 | `aprobacion_humana`  | MSG-013 a MSG-016 |    4     |
 | `rechazar_pedido`    | MSG-017           |    1     |
 | `derivar_humano`     | MSG-018 a MSG-020 |    3     |
+
+Los 4 mensajes de `aprobacion_humana` no terminan ahí: quedan en espera hasta que Gerencia los aprueba o los rechaza.
 
 <br>
 
@@ -276,8 +275,7 @@ AI-Engineering_Desafio1_Mesa-de-Pedidos/
 | Decidir si se confirma, va a Gerencia o se rechaza | Python (`validar_pedido`)                        | Es la política de la empresa                              |
 | Elegir el nodo siguiente                           | Router                                           | Solo pasa una decisión que ya se tomó                     |
 
-Ningún agente llama a las tools: `validar_pedido` las llama en todos los pedidos. El crédito y el stock se
-revisan siempre, sin depender de que el modelo se acuerde.
+Ningún agente llama a las tools: las llama el nodo `validar_pedido` en cada pedido. De esta manera, el stock y el crédito se verifican siempre, sin dejar esa decisión a criterio del LLM.
 
 <br>
 
@@ -306,8 +304,7 @@ Los **59 chunks** quedan de entre 136 y 810 caracteres, con estas característic
 
 Un test muestra que con tamaño fijo la excepción queda separada.
 
-**El nombre del documento al principio de cada chunk:** cada chunk empieza con el título del PDF (y en
-las fichas, con el rubro). Por eso un pedazo suelto como "Zona 3: $95.000" sigue diciendo de dónde salió.
+**El nombre del documento al principio de cada chunk:** cada chunk empieza con el título del PDF del que proviene y, en las fichas técnicas, también con el rubro. Por eso, aunque se recupere un fragmento suelto como “Zona 3: $95.000”, se sabe de qué documento salió.
 
 <br>
 
@@ -376,12 +373,18 @@ el código: alcanza con poner `MODELO_LLM=` y el modelo nuevo en el `.env`.
   de 15% para las herramientas eléctricas Dewalt, Makita y Bosch (art. 5). Si paga anticipado, se suma un 3%
   que no cuenta para el tope (art. 6).
 
-- **Qué decide `validar_pedido`, en este orden:**
-  - **Derivar** si no se puede evaluar: el CUIT no es de un cliente, o un producto no existe o no se pudo
-    identificar.
-  - **Rechazar** si el cliente está suspendido (más de 60 días de mora) y no paga anticipado. El art. 7
-    dice que solo puede comprar con pago anticipado, así que también se rechaza si pide contado.
-  - **Mandar a Gerencia** si aparece alguno de estos motivos: - el saldo más el pedido supera el límite de crédito (art. 7); - tiene de 30 a 60 días de mora, pague como pague, porque el art. 7 dice "cada pedido"; - pide un descuento mayor al tope de algún producto (art. 5); - no hay stock suficiente (art. 9); - el neto no llega al pedido mínimo (art. 3: no se rechaza, queda en espera); - pide más días de plazo que los que le corresponden, o es categoría C y pide cuenta corriente (art. 6).
+-   **Qué decide `validar_pedido`, en este orden:**
+
+    1. **Derivar** si no se puede evaluar: el CUIT no es de un cliente, o un producto no existe o no se pudo identificar.
+    2. **Rechazar** si el cliente está suspendido (más de 60 días de mora) y no paga anticipado. El art. 7 dice que solo puede comprar con pago anticipado, así que también se rechaza si pide contado.
+    3. **Mandar a Gerencia** si se presenta alguna de estas situaciones:
+        - el saldo más el pedido supera el límite de crédito (art. 7);
+        - el cliente tiene entre 30 y 60 días de mora, pague como pague, porque el art. 7 dice "cada pedido";
+        - se pide un descuento mayor al tope de algún producto (art. 5);
+        - no hay stock suficiente (art. 9);
+        - el neto no llega al pedido mínimo (art. 3: no se rechaza, queda en espera);
+        - se pide un plazo mayor al que le corresponde, o un cliente de categoría C pide cuenta corriente (art. 6).
+    4. **Confirmar** si no pasó nada de lo anterior.
 
 <br>
 
@@ -413,8 +416,7 @@ Cuando Gerencia responde, el nodo **vuelve a calcular el pedido** con el stock r
 autorizado. Si no hay stock de ningún producto, el pedido se rechaza aunque Gerencia lo haya aprobado.
 Cualquier respuesta que no sea un "aprobar" claro se toma como rechazo.
 
-Ejemplo, el MSG-016 aprobado con 22%: los discos van al 22%, las amoladoras Dewalt al 15%, se mandan 52
-amoladoras y quedan 8 pendientes. El neto baja de $18.731.000 a $16.666.000 (evidencia 8).
+Ejemplo del MSG-016 aprobado con un 22 % de descuento: los discos quedan con un 22 % y las amoladoras Dewalt mantienen el tope del 15 %. Se confirman 52 amoladoras y quedan 8 pendientes por falta de stock. El neto baja de $18.731.000 a $16.666.000 (evidencia 8).
 
 <br>
 
@@ -480,12 +482,7 @@ bien. El detalle de cada una está en `revision_consultas.md`.
   (interior de Córdoba). Lo del flete igual le da bien, porque en las zonas 1, 2 y 3 se bonifica desde el
   mismo monto ($1.500.000).
 
-- **Motivo:** el error no es de la búsqueda. El fragmento correcto llegó, y con la búsqueda densa
-  falla igual. El modelo comparó mal un número contra los rangos de la tabla. Por el mismo motivo los
-  pedidos se calculan en `reglas.py` y las fechas del MSG-005 en Python: en los pedidos, este error no puede
-  pasar. Para arreglarlo en las consultas se podría hacer lo mismo que con las fechas: sacar el monto que
-  menciona el cliente y que Python calcule el descuento. No lo hice. Tampoco cambié el prompt para que este
-  caso dé bien, porque eso sería ajustar el sistema al golden set.
+- **Motivo:** el problema no estuvo en la búsqueda, porque el fragmento correcto se recuperó y el error también apareció con la búsqueda densa. El modelo comparó incorrectamente el monto con los rangos de la tabla. Para evitar este tipo de errores, los importes de los pedidos se calculan directamente en `reglas.py`. En las consultas podría hacerse lo mismo que con las fechas: extraer el monto que menciona el cliente y que Python calcule el descuento. No llegué a implementarlo. Tampoco modifiqué el prompt para que este caso diera bien, porque eso sería ajustar el sistema al golden set.
 
 <br>
 
@@ -530,15 +527,9 @@ bien. El detalle de cada una está en `revision_consultas.md`.
 
 ### 🔹 Comparación entre búsqueda híbrida y solo con embeddings
 
-- Dieron igual: 20/20 en la ruta y 7/8 con el dato clave en las dos, y falla el mismo caso. Creo que es
-  porque en estas 8 consultas las preguntas usan palabras parecidas a las de los PDF. En el MSG-004, además
-  del código `HE-4330`, el cliente escribe "atornillador de impacto" y "batería", y con eso los embeddings
-  también encuentran la ficha.
+- Las dos estrategias obtuvieron los mismos resultados en las métricas automáticas: 20/20 rutas correctas y 7/8 consultas con el dato clave esperado. En ambos casos falló el MSG-001. Esto podría deberse a que las consultas utilizan términos parecidos a los de los PDF. En el MSG-004, por ejemplo, además del código `HE-4330`, el cliente menciona "atornillador de impacto" y "batería", lo que también facilita la búsqueda por embeddings.
 
-- Dejé la búsqueda híbrida porque no empeora nada y sirve cuando el cliente escribe solo el código. Con estos
-  casos, de todas formas, no pude mostrar que mejore.
-  Con temperature 0 las respuestas casi no cambian entre corridas, pero no son idénticas. Si se vuelve a
-  correr `evaluar.py`, algún caso podría dar distinto.
+- Se mantuvo la búsqueda híbrida porque BM25 permite encontrar coincidencias exactas, especialmente en los códigos de productos. Sin embargo, con los casos evaluados no se observó una mejora en las métricas frente a la búsqueda densa.
 
 <br>
 
@@ -799,8 +790,7 @@ Que los tests pasen no quiere decir que el LLM conteste bien: eso lo mide `evalu
 
 #### 8. Pedido aprobado con otro descuento (MSG-016)
 
-- Tenía tres motivos para frenarse: el descuento, el stock y el crédito. Gerencia autoriza 22%: los discos
-  van al 22% y las Dewalt siguen en 15%. Se mandan 52 amoladoras y quedan 8 pendientes.
+- Tenía tres motivos para solicitar aprobación: el descuento, el stock y el crédito. Gerencia autoriza un 22 % de descuento: los discos quedan con un 22 % y las amoladoras Dewalt mantienen el tope del 15 %. Se confirman 52 amoladoras y quedan 8 pendientes.
 
 <p align="center">
   <img src="./assets/aprobar-descuento-msg016.png" alt="Aprobación de MSG-016 con 22%" width="750">
@@ -846,9 +836,7 @@ llegar en otra terminal o al otro día, y el grafo sigue desde el mismo punto co
 la respuesta no tiene esa forma, falla en el momento. Con eso no hace falta leer el texto del modelo con
 `json.loads` ni adivinar qué quiso decir.
 
-**Golden set:** es la respuesta correcta de cada mensaje, escrita antes de medir. Sin eso, decir que el
-sistema "funciona" es una opinión. Con los 20 casos se ve cómo se porta con todos y no solo con los tres
-que uno prueba a mano.
+**Golden set:** es el conjunto de respuestas correctas para cada mensaje de prueba, escritas antes de medir. Sin él, decir que el sistema “funciona” es una opinión. En este caso se usan los 20 mensajes de la bandeja, en lugar de evaluar solamente algunos ejemplos elegidos a mano.
 
 <br>
 
