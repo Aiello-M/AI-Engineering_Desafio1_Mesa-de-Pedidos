@@ -5,6 +5,7 @@
 from contextlib import contextmanager
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import END, START, StateGraph
+from langchain_core.runnables.graph import NodeStyles
 import config
 from mesa_pedidos import nodos
 from mesa_pedidos.estado import EstadoMesa
@@ -82,5 +83,11 @@ def armar_config_hilo(id_mensaje: str) -> dict:
 
 
 if __name__ == "__main__":
+    # colores de las cajas con letra oscura para que se lean en GitHub con fondo claro y oscuro
+    estilos = NodeStyles(
+        default="fill:#fdf1e3,stroke:#d9822b,stroke-width:1.5px,color:#3b2a1a",
+        first="fill:#ffffff,stroke:#d9822b,color:#3b2a1a",
+        last="fill:#f4b26b,stroke:#b8641a,color:#3b2a1a",
+    )
     # imprime el diagrama del grafo (en Mermaid)
-    print(construir_grafo().get_graph().draw_mermaid())
+    print(construir_grafo().get_graph().draw_mermaid(node_colors=estilos))
