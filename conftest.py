@@ -1,0 +1,1 @@
+# está en la raíz para que pytest encuentre config.py y el paquete mesa_pedidos

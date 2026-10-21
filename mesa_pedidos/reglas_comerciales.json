@@ -1,0 +1,29 @@
+{
+  "fuente": "condiciones_comerciales_2026.pdf (pasado a mano, cada valor tiene su artículo)",
+  "vigencia_presupuesto": {"dias_habiles": 5, "articulo": "art. 2"},
+  "pedido_minimo": {"A": 250000, "B": 250000, "C": 120000, "articulo": "art. 3"},
+  "descuento_volumen": {
+    "rangos_monto_lista": [
+      {"monto_minimo": 6000000, "descuento": 12},
+      {"monto_minimo": 3000000, "descuento": 8},
+      {"monto_minimo": 1000000, "descuento": 5},
+      {"monto_minimo": 0, "descuento": 0}
+    ],
+    "articulo": "art. 4"
+  },
+  "topes_descuento": {
+    "tope_general": 20,
+    "tope_herramienta_electrica": 15,
+    "marcas_herramienta_electrica": ["dewalt", "makita", "bosch"],
+    "articulo": "art. 5"
+  },
+  "pago_anticipado": {"descuento_financiero": 3, "articulo": "art. 6"},
+  "mora": {"desde_autorizacion": 30, "suspension": 60, "articulo": "art. 7"},
+  "impuestos": {
+    "iva": 21,
+    "percepcion_iibb_fuera_de_cordoba": 3.5,
+    "percepcion_iva": 3,
+    "percepcion_iva_desde_neto": 2000000,
+    "articulo": "art. 2 y 8"
+  }
+}
