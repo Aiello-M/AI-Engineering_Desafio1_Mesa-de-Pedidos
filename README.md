@@ -282,7 +282,7 @@ revisan siempre, sin depender de que el modelo se acuerde.
 
 ### 🔹 El RAG
 
-#### ▸ Un chunk por artículo y no por tamaño fijo
+#### ✓ Un chunk por artículo y no por tamaño fijo
 
 Primero probé con tamaño fijo (`RecursiveCharacterTextSplitter` con 1000 caracteres y overlap de 150).
 El punto de devoluciones por arrepentimiento quedaba partido en dos:
@@ -308,7 +308,9 @@ Un test muestra que con tamaño fijo la excepción queda separada.
 **El nombre del documento al principio de cada chunk:** cada chunk empieza con el título del PDF (y en
 las fichas, con el rubro). Por eso un pedazo suelto como "Zona 3: $95.000" sigue diciendo de dónde salió.
 
-#### ▸ Búsqueda híbrida con `EnsembleRetriever`
+<br>
+
+#### ✓ Búsqueda híbrida con `EnsembleRetriever`
 
 - **Embeddings (FAISS):** encuentran textos que dicen lo mismo con otras palabras, como "cuánto tarda" y
   "plazo de entrega".
@@ -325,7 +327,9 @@ las fichas, con el rubro). Por eso un pedazo suelto como "Zona 3: $95.000" sigue
 porque varias respuestas dependen de quién pregunta: la zona de flete o si le corresponde percepción.
 También pide citar `[documento, p. N]` y decir qué información falta si el contexto no alcanza.
 
-#### ▸ Las fechas
+<br>
+
+#### ✓ Las fechas
 
 El MSG-005 es del 20/09 y dice:
 
@@ -358,41 +362,43 @@ el código: alcanza con poner `MODELO_LLM=` y el modelo nuevo en el `.env`.
 
 ### 🔹 Las reglas comerciales
 
-**Los números de la política están en un json.** La escala de volumen, los topes, el pedido mínimo, el 3%
+-   **Los números de la política están en un json.** La escala de volumen, los topes, el pedido mínimo, el 3%
 por pago anticipado, los días de mora y los impuestos de `condiciones_comerciales_2026.pdf` están en
 `mesa_pedidos/reglas_comerciales.json`, cada uno con su artículo. Los pasé a mano porque `validar_pedido`
 tiene que funcionar sin LLM. Si cambia la política, se cambia el json y no el código.
 
-**Los montos se calculan con `Decimal`**, porque `float` redondea mal (`0.1 + 0.2` da
+-   **Los montos se calculan con `Decimal`**, porque `float` redondea mal (`0.1 + 0.2` da
 `0.30000000000000004`). En los textos se muestran con el formato de los PDF: punto para los miles y coma
 para los decimales ($927.940,00).
 
-**El descuento** es el habitual del cliente más el de volumen (art. 4), con un tope de 20% por producto y
+-   **El descuento** es el habitual del cliente más el de volumen (art. 4), con un tope de 20% por producto y
 de 15% para las herramientas eléctricas Dewalt, Makita y Bosch (art. 5). Si paga anticipado, se suma un 3%
 que no cuenta para el tope (art. 6).
 
-**Qué decide `validar_pedido`, en este orden:**
+-   **Qué decide `validar_pedido`, en este orden:**
 
-1. **Derivar** si no se puede evaluar: el CUIT no es de un cliente, o un producto no existe o no se pudo
+    - **Derivar** si no se puede evaluar: el CUIT no es de un cliente, o un producto no existe o no se pudo
    identificar.
-2. **Rechazar** si el cliente está suspendido (más de 60 días de mora) y no paga anticipado. El art. 7
+    - **Rechazar** si el cliente está suspendido (más de 60 días de mora) y no paga anticipado. El art. 7
    dice que solo puede comprar con pago anticipado, así que también se rechaza si pide contado.
-3. **Mandar a Gerencia** si aparece alguno de estos motivos:
-   - el saldo más el pedido supera el límite de crédito (art. 7);
-   - tiene de 30 a 60 días de mora, pague como pague, porque el art. 7 dice "cada pedido";
-   - pide un descuento mayor al tope de algún producto (art. 5);
-   - no hay stock suficiente (art. 9);
-   - el neto no llega al pedido mínimo (art. 3: no se rechaza, queda en espera);
-   - pide más días de plazo que los que le corresponden, o es categoría C y pide cuenta corriente (art. 6).
-4. **Confirmar** si no pasó nada de lo anterior.
+    - **Mandar a Gerencia** si aparece alguno de estos motivos:
+		   - el saldo más el pedido supera el límite de crédito (art. 7);
+		   - tiene de 30 a 60 días de mora, pague como pague, porque el art. 7 dice "cada pedido";
+		   - pide un descuento mayor al tope de algún producto (art. 5);
+		   - no hay stock suficiente (art. 9);
+		   - el neto no llega al pedido mínimo (art. 3: no se rechaza, queda en espera);
+		   - pide más días de plazo que los que le corresponden, o es categoría C y pide cuenta corriente (art. 6).
+    - **Confirmar** si no pasó nada de lo anterior.
+      
+<br>
 
-**Interpretaciones que tuve que tomar**, porque la política no las dice explícitamente:
+-  **Interpretaciones que tuve que tomar**, porque la política no las dice explícitamente:
 
-- Un cliente categoría C que no dice cómo paga se toma como contado, porque la categoría C no tiene cuenta
+    - Un cliente categoría C que no dice cómo paga se toma como contado, porque la categoría C no tiene cuenta
   corriente (art. 6).
-- Pedir 19% en una amoladora Dewalt va a Gerencia aunque esté debajo del 20% general, porque para esa marca
+    - Pedir 19% en una amoladora Dewalt va a Gerencia aunque esté debajo del 20% general, porque para esa marca
   el tope es 15%.
-- La escala de volumen se calcula con el monto de lista. Si se calculara con el monto ya descontado, sería
+    - La escala de volumen se calcula con el monto de lista. Si se calculara con el monto ya descontado, sería
   circular. El crédito, el pedido mínimo y los impuestos se calculan con el monto con descuento, que es lo
   que se factura.
 
@@ -402,13 +408,13 @@ que no cuenta para el tope (art. 6).
 
 `aprobacion_humana` llama a `interrupt()` con un payload que tiene lo que Gerencia necesita para decidir:
 
-- razón social, CUIT y categoría;
-- crédito disponible, con el límite y el saldo;
-- días de mora;
-- neto y productos, con el descuento de cada uno;
-- los motivos por los que se frenó;
-- si falta stock, cómo quedaría el pedido con lo que hay;
-- qué pasa si aprueba: se manda solo lo que hay en stock y el resto queda pendiente (art. 9), y si autoriza
+-   razón social, CUIT y categoría;
+-   crédito disponible, con el límite y el saldo;
+-   días de mora;
+-   neto y productos, con el descuento de cada uno;
+-   los motivos por los que se frenó;
+-   si falta stock, cómo quedaría el pedido con lo que hay;
+-   qué pasa si aprueba: se manda solo lo que hay en stock y el resto queda pendiente (art. 9), y si autoriza
   otro descuento, Dewalt, Makita y Bosch siguen con tope de 15%, porque es un acuerdo con el fabricante.
 
 Cuando Gerencia responde, el nodo **vuelve a calcular el pedido** con el stock real y el descuento
