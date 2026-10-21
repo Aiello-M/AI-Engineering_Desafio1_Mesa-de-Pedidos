@@ -17,9 +17,10 @@
 
 ## 📚 Datos del Proyecto
 
-- **Institución:** ICARO
+- **Institución:** ICARO - UNC - FCEFyN
 - **Programa:** Diplomatura Universitaria en IA Engineering
 - **Trabajo:** Desafío 1 - Mesa de Pedidos
+- **Docente:** Lucas Romano Miller
 - **Estudiante:** Mariana Aiello
 - **Repositorio:** [AI-Engineering_Desafio1_Mesa-de-Pedidos](https://github.com/Aiello-M/AI-Engineering_Desafio1_Mesa-de-Pedidos)
 - **Informe (2 carillas):** [docs/informe.pdf](docs/informe.pdf)
